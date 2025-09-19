@@ -3,9 +3,8 @@ import re
 import streamlit as st
 import pandas as pd
 import mysql.connector
-import plotly.express as px
-import plotly.graph_objects as go
 from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv()
