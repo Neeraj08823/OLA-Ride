@@ -6,8 +6,6 @@ SELECT
     Pickup_Location,
     Drop_Location,
     booking_timestamp,
-    Booking_Value,
-    Payment_Method,
     Ride_Distance
 FROM 
 	ola_rides
@@ -72,9 +70,18 @@ WHERE
 
 
 -- Q7:- All rides where payment was made using UPI
-SELECT *
-FROM ola_rides
-WHERE Payment_Method = 'upi';
+SELECT 
+	Booking_ID,
+    Customer_ID,
+	Vehicle_Type,
+    booking_timestamp,
+    CONCAT('₹', FORMAT(Booking_Value, 0)) AS Booking_Value,
+    Payment_Method,
+    Ride_Distance
+FROM 
+	ola_rides
+WHERE 
+	Payment_Method = 'upi';
 
 
 -- Q8:- Average customer rating per vehicle type

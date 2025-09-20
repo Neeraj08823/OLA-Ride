@@ -3,17 +3,18 @@ import re
 import streamlit as st
 import pandas as pd
 import mysql.connector
+import requests
 from dotenv import load_dotenv
-
 
 # Load environment variables
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
-DB_PORT = os.getenv("DB_PORT")
+# Database configuration with fallbacks
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_NAME = os.getenv("DB_NAME", "ola_ride_db")
+DB_PORT = os.getenv("DB_PORT", "3306")
 
 # Page configuration
 st.set_page_config(
@@ -23,32 +24,92 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ---------- Database Connection ----------
+def get_connection():
+    """Simple database connection with cloud/local detection"""
+    try:
+        if "mysql" in st.secrets:  # when running on Streamlit Cloud
+            return mysql.connector.connect(
+                host=st.secrets["mysql"]["host"],
+                port=int(st.secrets["mysql"].get("port", "3306")),
+                user=st.secrets["mysql"]["user"],
+                password=st.secrets["mysql"]["password"],
+                database=st.secrets["mysql"]["database"]
+            )
+        else:  # local development with .env
+            return mysql.connector.connect(
+                host=DB_HOST,
+                port=int(DB_PORT),
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME
+            )
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
 
-# Page configuration
-st.set_page_config(
-    page_title="Ola Ride Insights Dashboard",
-    page_icon="🚗",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# ---------- Load Queries from GitHub ----------
+@st.cache_data
+def load_queries():
+    """Load SQL queries from GitHub repository"""
+    url = "https://raw.githubusercontent.com/Neeraj08823/OLA-Ride/main/queries.sql"
+    response = requests.get(url)
+    if response.status_code != 200:
+        st.error("Failed to fetch queries from GitHub")
+        return {}
+    
+    def parse_queries_with_comments(script):
+        blocks = []
+        current_comment = None
+        current_query = []
+        
+        for line in script.splitlines():
+            if line.strip().startswith('--'):
+                if current_comment and current_query:
+                    blocks.append((current_comment, '\n'.join(current_query).strip()))
+                    current_query = []
+                current_comment = line.strip()
+            else:
+                if line.strip() or current_query:
+                    current_query.append(line)
+                    
+        if current_comment and current_query:
+            blocks.append((current_comment, '\n'.join(current_query).strip()))
+            
+        return [block for block in blocks if block[1] and len(block[1].strip()) > 2]
 
-# --- Utility to load queries from queries.sql ---
-def load_queries(sql_file="queries.sql"):
-    with open(sql_file, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    pattern = r"--\s*(Q\d+)\s*[:-]\s*(.+?)\n(.*?)(?=(?:\n--\s*Q\d+\s*[:-])|\Z)"
-    matches = re.findall(pattern, content, flags=re.S)
-
+    # Parse queries and create dictionary
     queries = {}
-    for qnum, title, sql_body in matches:
-        key = f"{qnum} - {title.strip()}"
-        # remove inline comment lines inside body
-        body_lines = [ln for ln in sql_body.splitlines() if not ln.strip().startswith("--")]
-        q_clean = "\n".join(body_lines).strip().rstrip(";")
-        queries[key] = q_clean
-    return queries
+    parsed_queries = parse_queries_with_comments(response.text)
+    
+    for comment, query in parsed_queries:
+        # Clean the comment to use as key
+        clean_comment = comment[2:].strip()  # Remove -- and whitespace
+        queries[clean_comment] = query
 
+    if queries:
+        return queries
+    else:
+        raise Exception("No queries found")
+    
+    
+# ---------- Execute Query ----------
+@st.cache_data
+def run_query(query):
+    """Execute SQL query and return DataFrame"""
+    conn = get_connection()
+    if conn is None:
+        return pd.DataFrame()
+    
+    try:
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Query execution failed: {e}")
+        if conn:
+            conn.close()
+        return pd.DataFrame()
 
 # Main title
 st.markdown(
@@ -65,31 +126,6 @@ page = st.sidebar.selectbox(
 )
 
 
-@st.cache_data
-def run_query(query=None):
-    """Run a SQL query and return the result as a DataFrame.
-    If no query is provided, fetch default overview data."""
-    try:
-        conn = mysql.connector.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS,
-            port=DB_PORT
-        )
-        if query is None:
-            query = "SELECT * FROM ola_rides LIMIT 1000"
-        df = pd.read_sql(query, conn)
-        conn.close()
-        return df
-    except Exception as e:
-        st.error(f"Database connection failed: {e}")
-        return pd.DataFrame()  # return empty df if error
-
-# Load default data for Overview page
-df = run_query()
-
-
 # ================= SQL Analysis Page =================
 if page == "SQL Analysis":
     st.markdown(
@@ -98,7 +134,7 @@ if page == "SQL Analysis":
 )
 
     # Load queries
-    queries_dict = load_queries("queries.sql")
+    queries_dict = load_queries()
     comment_list = list(queries_dict.keys())
 
     col1, col2 = st.columns([1, 2])
@@ -106,7 +142,7 @@ if page == "SQL Analysis":
     with col1:
         st.subheader("🧩 Select Query")
         selected_label = st.selectbox("", comment_list, label_visibility='collapsed')
-        run_btn = st.button("Ask❔", use_container_width=True)
+        run_btn = st.button("Ask❔", width='stretch')
         if run_btn:
             st.success("✅ Query Executed Successfully!")
 
@@ -116,7 +152,7 @@ if page == "SQL Analysis":
             try:
                 query = queries_dict[selected_label]
                 df_result = run_query(query)    
-                st.dataframe(df_result, use_container_width=True)
+                st.dataframe(df_result, width='stretch')
             except Exception as e:
                 st.error(f"❌ Error: {e}")
 

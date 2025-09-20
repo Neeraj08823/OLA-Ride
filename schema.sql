@@ -34,5 +34,14 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\r\n'
 IGNORE 1 ROWS;
 
+
+-- Create indexes for performance optimization
+CREATE INDEX idx_customer_id ON ola_rides (Customer_ID);
+CREATE INDEX idx_vehicle_type ON ola_rides (Vehicle_Type);
+CREATE INDEX idx_booking_timestamp ON ola_rides (booking_timestamp);
+CREATE INDEX idx_payment_method ON ola_rides (Payment_Method);
+CREATE INDEX idx_booking_status ON ola_rides (Booking_Status);
+
+
 -- Verify loaded data
 SELECT * FROM ola_rides LIMIT 5;
