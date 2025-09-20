@@ -173,7 +173,7 @@ elif page == "Power BI Dashboard":
 st.markdown(
     """
     <div style="text-align: center; padding: 12px; font-size: 14px; color: #aaa;">
-        Build using Streamlit,Power BI & MySQL<br>
+        Build using Streamlit, Power BI & MySQL<br>
         © 2025 Neeraj Kumar | 
         <a href="https://github.com/Neeraj08823/OLA-Ride" target="_blank" style="color:#111d4a; text-decoration: none;">GitHub Repo</a>
     </div>
