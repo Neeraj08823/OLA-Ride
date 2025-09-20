@@ -68,10 +68,10 @@ Refer to the `schema.sql` file for complete schema and data loading instructions
 
 ```
 📦 Ola_Ride_Dashboard
-┣ 📂Data
-┃ ┗ 📜 OLA_DataSet.xlsx
 ┣ 📂.streamlit
 ┃ ┗ 📜 config.toml
+┣ 📂Data
+┃ ┗ 📜 OLA_DataSet.xlsx
 ┣ 📜 ola_dashboard_app.py
 ┣ 📜 process_data.py
 ┣ 📜 queries.sql
