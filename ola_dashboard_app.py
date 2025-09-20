@@ -119,7 +119,7 @@ st.markdown(
 st.markdown("---")
 
 # Sidebar navigation
-st.sidebar.title("Navigation")
+st.sidebar.title("🧭 Navigation")
 page = st.sidebar.selectbox(
     "Choose a page:",
     ["Power BI Dashboard","SQL Analysis"]
@@ -169,3 +169,15 @@ elif page == "Power BI Dashboard":
         height=600,
         scrolling=True,
     )
+# --- FOOTER ---
+st.markdown(
+    """
+    <div style="text-align: center; padding: 12px; font-size: 14px; color: #aaa;">
+        Build using Streamlit,Power BI & MySQL<br>
+        © 2025 Neeraj Kumar | 
+        <a href="https://github.com/Neeraj08823/OLA-Ride" target="_blank" style="color:#111d4a; text-decoration: none;">GitHub Repo</a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+st.markdown('</div>', unsafe_allow_html=True)
